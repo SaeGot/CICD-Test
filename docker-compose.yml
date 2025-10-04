@@ -1,0 +1,11 @@
+services:
+  web:
+    build: .
+    container_name: django
+    restart: always
+    ports:
+      - "18000:8000"
+    volumes:
+      - ./testproject:/testproject
+    environment:
+      DJANGO_DEBUG: "True"

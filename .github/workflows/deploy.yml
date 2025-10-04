@@ -1,0 +1,22 @@
+name: Deploy (minimal)
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: SSH to VM & deploy
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VM_HOST }}       # VM IP
+          username: ${{ secrets.VM_USER }}   # 예: ubuntu
+          key: ${{ secrets.VM_SSH_KEY }}     # PEM 개인키 원문
+          script: |
+            set -e
+            cd ~/cicd_test
+            git pull
+            docker compose up -d --build
+            # (원하면) 마이그레이션
+            docker compose exec -T web python manage.py migrate --noinput || true
