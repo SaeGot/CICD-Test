@@ -1,9 +1,13 @@
 name: Deploy to VM (manual)
-run-name: "${{ github.event.inputs.ts }}-${{ github.event.inputs.title }}@${{ github.actor }}"
+run-name: "${{ github.event.inputs.ver }}-${{ github.event.inputs.title }}@${{ github.actor }}"
 
 on:
   workflow_dispatch:
     inputs:
+      ver:
+        description: "배포 버전"
+        required: true
+        default: ""
       title:
         description: "이 실행(run)의 표시 이름"
         required: true
