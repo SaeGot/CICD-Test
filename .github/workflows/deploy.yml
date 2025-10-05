@@ -10,13 +10,33 @@ jobs:
       - name: SSH to VM & deploy
         uses: appleboy/ssh-action@v0.1.10
         with:
-          host: ${{ secrets.VM_HOST }}       # VM IP
-          username: ${{ secrets.VM_USER }}   # 예: ubuntu
-          key: ${{ secrets.VM_SSH_KEY }}     # PEM 개인키 원문
-          script: |
-            set -e
-            cd ~/cicd_test
-            git pull
-            docker compose up -d --build
-            # (원하면) 마이그레이션
-            docker compose exec -T web python manage.py migrate --noinput || true
+            host: ${{ secrets.VM_HOST }}       # VM IP
+            username: ${{ secrets.VM_USER }}   # 예: ubuntu
+            key: ${{ secrets.VM_SSH_KEY }}     # PEM 개인키 원문
+            script_stop: true
+            script: |
+              set -euxo pipefail
+
+              echo "== whoami / groups / docker socket =="
+              whoami
+              id -nG || true
+              ls -l /var/run/docker.sock || true
+
+              echo "== docker / compose version =="
+              command -v docker || true
+              docker --version || true
+              docker compose version || true
+
+              echo "== go to repo =="
+              cd ~/cicd_test   # ← 실제 클론 경로로 수정
+              pwd
+              git remote -v
+              git rev-parse --abbrev-ref HEAD
+              git pull
+
+              echo "== build & up =="
+              docker compose up -d --build
+
+              echo "== ps & quick curl =="
+              docker compose ps
+              curl -s http://127.0.0.1:18000 | head || true
