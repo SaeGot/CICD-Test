@@ -1,0 +1,39 @@
+name: CI (Django minimal)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 설정/마이그레이션 점검 (SQLite 사용)
+      - name: Django checks & migrate
+        working-directory: ./testproject           # ← manage.py가 있는 폴더      
+        env:
+          DJANGO_SECRET_KEY: test
+          DJANGO_DEBUG: "False"
+        run: |
+          python manage.py check
+          python manage.py migrate --noinput
+
+      # 테스트 (없으면 0 tests로 통과)
+      - name: Run tests
+        working-directory: ./testproject           # ← manage.py가 있는 폴더        
+        run: |
+          python manage.py test -v 2

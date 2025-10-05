@@ -1,7 +1,16 @@
-name: Deploy (minimal)
+name: Deploy to VM (manual)
+
 on:
-  push:
-    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "배포할 브랜치/태그/커밋 SHA"
+        required: true
+        default: "main"
+      dry_run:
+        description: "도커 빌드/재기동 생략(점검용)"
+        type: boolean
+        default: false
 
 jobs:
   deploy:
@@ -10,15 +19,37 @@ jobs:
       - name: SSH to VM & deploy
         uses: appleboy/ssh-action@v0.1.10
         with:
-            host: ${{ secrets.VM_HOST }}       # VM IP
-            username: ${{ secrets.VM_USER }}   # 예: ubuntu
-            key: ${{ secrets.VM_SSH_KEY }}     # PEM 개인키 원문
-            script: |
-                set -e
-                cd ~/cicd_test
-                git fetch --all --prune
-                git reset --hard origin/main
-                git clean -fd
-                docker compose up -d --build
-                # (원하면) 마이그레이션
-                docker compose exec -T web python manage.py migrate --noinput || true
+          host: ${{ secrets.VM_HOST }}       # VM IP
+          username: ${{ secrets.VM_USER }}   # 예: ubuntu/saegotlab 등
+          key: ${{ secrets.VM_SSH_KEY }}     # PEM 개인키 원문
+          # host_fingerprint: ${{ secrets.VM_HOST_FINGERPRINT }}  # (선택) 서버 호스트키 지문
+          script_stop: true
+          script: |
+            set -euxo pipefail
+            cd ~/cicd_test   # ← 서버의 실제 클론 경로로 맞춰주세요
+
+            # 최신 원격 반영
+            git fetch --all --prune
+
+            # 입력한 ref가 브랜치면 origin/ref로, 아니면 SHA/태그로 체크아웃
+            REF="${{ github.event.inputs.ref }}"
+            if git rev-parse --verify --quiet "origin/$REF" >/dev/null; then
+              git reset --hard "origin/$REF"
+              git checkout -B "$REF" "origin/$REF"
+            else
+              git checkout -B deploy-target || true
+              git reset --hard "$REF"
+            fi
+
+            git clean -fd
+
+            # Dry run 옵션이면 여기서 종료
+            if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+              echo "Dry run: docker compose up -d --build 생략"
+              exit 0
+            fi
+
+            docker compose up -d --build
+            docker compose ps
+            # 포트가 18000이라면 빠른 헬스 확인
+            curl -s http://127.0.0.1:18000 | head || true
