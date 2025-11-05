@@ -60,5 +60,5 @@ jobs:
 
             docker compose up -d --build
             docker compose ps
-            # 포트가 18000이라면 빠른 헬스 확인
-            curl -s http://127.0.0.1:18000 | head || true
+            # 포트가 28000이라면 빠른 헬스 확인
+            curl -s http://127.0.0.1:28000 | head || true
