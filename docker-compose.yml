@@ -4,7 +4,7 @@ services:
     container_name: django
     restart: always
     ports:
-      - "18000:8000"
+      - "28000:8000"
     volumes:
       - ./testproject:/testproject
     environment:
